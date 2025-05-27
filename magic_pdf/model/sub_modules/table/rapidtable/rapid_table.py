@@ -48,15 +48,27 @@ class RapidTableModel(object):
         img_is_portrait = img_aspect_ratio > 1.2
 
         if img_is_portrait:
-
-            det_res = self.ocr_engine.ocr(bgr_image, rec=False)[0]
+            # Detect if using RapidOCR or PaddleOCR by checking for 'ocr' method
+            if hasattr(self.ocr_engine, 'ocr'):
+                # PaddleOCR interface
+                det_res = self.ocr_engine.ocr(bgr_image, rec=False)[0]
+            else:
+                # RapidOCR interface
+                det_res, _ = self.ocr_engine.auto_text_det(bgr_image)
+                
             # Check if table is rotated by analyzing text box aspect ratios
             is_rotated = False
             if det_res:
                 vertical_count = 0
 
                 for box_ocr_res in det_res:
-                    p1, p2, p3, p4 = box_ocr_res
+                    if hasattr(self.ocr_engine, 'ocr'):
+                        # PaddleOCR format: box_ocr_res is directly the 4-point box
+                        p1, p2, p3, p4 = box_ocr_res
+                    else:
+                        # RapidOCR format: box_ocr_res is numpy array with shape [4, 2]
+                        points = box_ocr_res.tolist() if hasattr(box_ocr_res, 'tolist') else box_ocr_res
+                        p1, p2, p3, p4 = points
 
                     # Calculate width and height
                     width = p3[0] - p1[0]
@@ -67,15 +79,11 @@ class RapidTableModel(object):
                     # Count vertical vs horizontal text boxes
                     if aspect_ratio < 0.8:  # Taller than wide - vertical text
                         vertical_count += 1
-                    # elif aspect_ratio > 1.2:  # Wider than tall - horizontal text
-                    #     horizontal_count += 1
 
                 # If we have more vertical text boxes than horizontal ones,
                 # and vertical ones are significant, table might be rotated
                 if vertical_count >= len(det_res) * 0.3:
                     is_rotated = True
-
-                # logger.debug(f"Text orientation analysis: vertical={vertical_count}, det_res={len(det_res)}, rotated={is_rotated}")
 
             # Rotate image if necessary
             if is_rotated:
@@ -84,13 +92,26 @@ class RapidTableModel(object):
                 bgr_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         # Continue with OCR on potentially rotated image
-        ocr_result = self.ocr_engine.ocr(bgr_image)[0]
-        if ocr_result:
-            ocr_result = [[item[0], item[1][0], item[1][1]] for item in ocr_result if
-                      len(item) == 2 and isinstance(item[1], tuple)]
+        if hasattr(self.ocr_engine, 'ocr'):
+            # PaddleOCR interface
+            ocr_result = self.ocr_engine.ocr(bgr_image)[0]
+            if ocr_result:
+                ocr_result = [[item[0], item[1][0], item[1][1]] for item in ocr_result if
+                          len(item) == 2 and isinstance(item[1], tuple)]
+            else:
+                ocr_result = None
         else:
-            ocr_result = None
-
+            # RapidOCR interface
+            rapid_result, _ = self.ocr_engine(bgr_image)
+            if rapid_result:
+                ocr_result = []
+                for item in rapid_result:
+                    # RapidOCR format: [[[x1,y1], [x2,y2], [x3,y3], [x4,y4]], text, confidence]
+                    if len(item) == 3:
+                        bbox, text, confidence = item
+                        ocr_result.append([bbox, text, confidence])
+            else:
+                ocr_result = None
 
         if ocr_result:
             table_results = self.table_model(np.asarray(image), ocr_result)

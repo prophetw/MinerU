@@ -49,13 +49,8 @@ def table_model_init(table_model_type, model_path, max_time, _device_='cpu', lan
         table_model = TableMasterPaddleModel(config)
     elif table_model_type == MODEL_NAME.RAPID_TABLE:
         atom_model_manager = AtomModelSingleton()
-        ocr_engine = atom_model_manager.get_atom_model(
-            atom_model_name='ocr',
-            ocr_show_log=False,
-            det_db_box_thresh=0.5,
-            det_db_unclip_ratio=1.6,
-            lang=lang
-        )
+        # 使用 rapidocr 作为专门的 OCR 引擎
+        ocr_engine = rapidocr_model_init()
         table_model = RapidTableModel(ocr_engine, table_sub_model_name)
     else:
         logger.error('table model type not allow')
@@ -120,6 +115,16 @@ def ocr_model_init(show_log: bool = False,
             det_db_unclip_ratio=det_db_unclip_ratio,
         )
     return model
+
+
+def rapidocr_model_init():
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+        model = RapidOCR()
+        return model
+    except ImportError:
+        logger.error('rapidocr_onnxruntime not installed')
+        exit(1)
 
 
 class AtomModelSingleton:

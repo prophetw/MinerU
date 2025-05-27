@@ -45,6 +45,7 @@ if __name__ == '__main__':
                      "doclayout_yolo==0.0.2b1",  # doclayout_yolo
                      "dill>=0.3.8,<1",  # doclayout_yolo
                      "rapid_table>=1.0.5,<2.0.0",  # rapid_table
+                     "rapidocr_onnxruntime>=1.3.24,<2",  # rapidocr for rapid_table
                      "PyYAML>=6.0.2,<7",  # yaml
                      "ftfy>=6.3.1,<7",  # unimernet_hf
                      "openai>=1.70.0,<2",  # openai SDK
@@ -65,6 +66,7 @@ if __name__ == '__main__':
                     "omegaconf==2.3.0",  # paddleocr2pytorch
                     "albumentations==1.4.20", # 1.4.21引入的simsimd不支持2019年及更早的linux系统
                     "rapid_table==1.0.3",  # rapid_table新版本依赖的onnxruntime不支持2019年及更早的linux系统
+                    "rapidocr_onnxruntime>=1.3.24,<2",  # rapidocr for rapid_table
             ],
         },
         description="A practical tool for converting PDF to Markdown",  # 简短描述
